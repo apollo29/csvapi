@@ -10,7 +10,9 @@
   "require": {
     "php": "^7.4 || ^8.0",
     "apollo29/csvdb": "^0.0.17",
-    "steampixel/simple-php-router": "^0.7.1"
+    "bramus/router": "^1.6",
+    "vlucas/phpdotenv": "^4.1",
+    "ext-json": "*"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.5",
