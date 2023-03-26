@@ -79,14 +79,14 @@ class CSVAPI
     public function run()
     {
         // todo basic CRUD operations can be configured if applicable or not  (or override) ==> repository class (interface) see: https://github.com/bramus/router#classmethod-calls
-        // todo add custom routes
-        // todo output always with header json ==> CSVDB add answer!!
+        // todo add custom routes --> https://github.com/bramus/router#classmethod-calls
         // todo add middleware with auth! (basic auth or create own)
         // todo whatabout params for "where" statements... (config)
-        // todo check for data (post,put) -> https://github.com/bramus/router#before-route-middlewares
-        // todo index == index of csv config! or override
         // todo make "single file" with .env config (index.php, .env, .htaccess and corresponding csv file)
         // todo return proper status codes: https://pavledjuric.medium.com/best-practices-for-designing-rest-apis-using-proper-status-codes-461fde1cbb1c
+        // todo check if .env or settings array?!
+        // todo root route
+        // todo exception handling see https://pavledjuric.medium.com/best-practices-for-designing-rest-apis-using-proper-status-codes-461fde1cbb1c
 
         $router = new Router();
         $csvdb = $this->csvdb;
