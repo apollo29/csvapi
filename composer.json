@@ -9,7 +9,7 @@
   },
   "require": {
     "php": "^7.4 || ^8.0",
-    "apollo29/csvdb": "^0.0.18",
+    "apollo29/csvdb": "^0.0.20",
     "bramus/router": "^1.6",
     "selective/array-reader": "^1.1",
     "vlucas/phpdotenv": "^4.1",
