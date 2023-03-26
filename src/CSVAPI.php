@@ -21,7 +21,7 @@ class CSVAPI
     /**
      * @param string $csv_file
      * @param string $basedir
-     * @throws \Exception
+     * @param Repository|null $repository
      */
     public function __construct(string $csv_file, string $basedir, Repository $repository = null)
     {
@@ -99,7 +99,7 @@ class CSVAPI
                 self::before();
             });
 
-            $router->before("PUT|POST|DELETE", "/.*", function () {
+            $router->before("PUT|POST", "/.*", function () {
                 self::before();
             });
 
