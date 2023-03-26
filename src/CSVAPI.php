@@ -3,6 +3,7 @@
 namespace CSVAPI;
 
 use Bramus\Router\Router;
+use CSVAPI\Middleware\Middleware;
 use CSVAPI\Repository\DefaultRepository;
 use CSVAPI\Repository\Repository;
 use CSVDB\Helpers\CSVConfig;
@@ -17,6 +18,8 @@ class CSVAPI
     public string $csv_file;
     public string $basedir;
     public string $baseroute;
+
+    private array $middleware = array();
 
     /**
      * @param string $csv_file
@@ -77,6 +80,13 @@ class CSVAPI
         return CSVConfig::default();
     }
 
+    public function middleware(Middleware ...$middlewares): void
+    {
+        foreach ($middlewares as $middleware) {
+            $this->middleware[get_class($middleware)] = $middleware;
+        }
+    }
+
     public function run()
     {
         // todo add middleware with auth! (basic auth or create own)
@@ -95,6 +105,15 @@ class CSVAPI
 
         // api
         $router->mount('/' . $this->baseroute, function () use ($router, $repository) {
+
+            // custom before app middleware
+            foreach ($this->middleware as $middleware) {
+                if ($middleware instanceof Middleware) {
+                    $middleware->middleware_function();
+                }
+            }
+
+            // before app middleware of CSVAPI
             $router->before("PUT|POST", "*", function () {
                 self::before();
             });
