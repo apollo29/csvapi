@@ -15,12 +15,13 @@ class DefaultRepository extends Repository
 
     private CSVDB $csvdb;
 
-    /**
-     * @throws \Exception
-     */
     public function __construct(string $csv_file, CSVConfig $csv_config)
     {
-        $this->csvdb = new CSVDB($csv_file, $csv_config);
+        try {
+            $this->csvdb = new CSVDB($csv_file, $csv_config);
+        } catch (\Exception $e) {
+            self::respond500($e);
+        }
     }
 
     public function get(?string $index = null): void
@@ -32,40 +33,59 @@ class DefaultRepository extends Repository
         }
     }
 
-    /**
-     * @throws UnableToProcessCsv|InvalidArgument|CannotInsertRecord|Exception
-     */
     public function post(array $data, ?string $index = null): void
     {
         if (empty($index)) {
-            self::respond201($this->csvdb->insert($data));
+            try {
+                self::respond201($this->csvdb->insert($data));
+            } catch (CannotInsertRecord $e) {
+                self::respond400($e);
+            } catch (InvalidArgument|Exception|UnableToProcessCsv $e) {
+                self::respond500($e);
+            }
         } else {
-            self::respond201($this->csvdb->update($data, [$this->csvdb->index => $index]));
+            try {
+                self::respond201($this->csvdb->update($data, [$this->csvdb->index => $index]));
+            } catch (CannotInsertRecord|\Exception $e) {
+                self::respond400($e);
+            } catch (UnableToProcessCsv $e) {
+                self::respond500($e);
+            }
         }
     }
 
-    /**
-     * @throws UnableToProcessCsv|InvalidArgument|CannotInsertRecord|Exception
-     */
     public function put(array $data, ?string $index = null): void
     {
         if (empty($data)) {
-            self::respond201($this->csvdb->upsert($data));
+            try {
+                self::respond201($this->csvdb->upsert($data));
+            } catch (CannotInsertRecord|\Exception $e) {
+                self::respond400($e);
+            } catch (UnableToProcessCsv $e) {
+                self::respond500($e);
+            }
         } else {
-            self::respond201($this->csvdb->upsert([$this->csvdb->index => $index]));
+            try {
+                self::respond201($this->csvdb->upsert([$this->csvdb->index => $index]));
+            } catch (CannotInsertRecord|\Exception $e) {
+                self::respond400($e);
+            } catch (UnableToProcessCsv $e) {
+                self::respond500($e);
+            }
         }
     }
 
-    /**
-     * @throws InvalidArgument|Exception
-     */
     public function delete(string $index): void
     {
-        $delete = $this->csvdb->delete([$this->csvdb->index => $index]);
-        if ($delete) {
-            self::respond204();
-        } else {
-            self::respond400("resource could not be deleted");
+        try {
+            $delete = $this->csvdb->delete([$this->csvdb->index => $index]);
+            if ($delete) {
+                self::respond204();
+            } else {
+                self::respond400("resource could not be deleted");
+            }
+        } catch (InvalidArgument|Exception $e) {
+            self::respond500($e);
         }
     }
 }

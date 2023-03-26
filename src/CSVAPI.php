@@ -3,7 +3,8 @@
 namespace CSVAPI;
 
 use Bramus\Router\Router;
-use CSVDB\CSVDB;
+use CSVAPI\Repository\DefaultRepository;
+use CSVAPI\Repository\Repository;
 use CSVDB\Helpers\CSVConfig;
 use Dotenv\Dotenv;
 use Selective\ArrayReader\ArrayReader;
@@ -11,7 +12,7 @@ use Selective\ArrayReader\ArrayReader;
 class CSVAPI
 {
 
-    private CSVDB $csvdb;
+    private Repository $repository;
 
     public string $csv_file;
     public string $basedir;
@@ -22,7 +23,7 @@ class CSVAPI
      * @param string $basedir
      * @throws \Exception
      */
-    public function __construct(string $csv_file, string $basedir)
+    public function __construct(string $csv_file, string $basedir, Repository $repository = null)
     {
         // load env
         $dotenv = Dotenv::createImmutable($basedir);
@@ -32,7 +33,7 @@ class CSVAPI
         $this->basedir = $this->basedir($basedir);
         $this->baseroute = $this->baseroute();
 
-        $this->csvdb = new CSVDB($this->csv_file(), $this->csv_config($_ENV));
+        $this->repository = $repository ?: new DefaultRepository($this->csv_file(), $this->csv_config($_ENV));
     }
 
     private function basedir(string $basedir): string
@@ -78,81 +79,61 @@ class CSVAPI
 
     public function run()
     {
-        // todo basic CRUD operations can be configured if applicable or not  (or override) ==> repository class (interface) see: https://github.com/bramus/router#classmethod-calls
-        // todo add custom routes --> https://github.com/bramus/router#classmethod-calls
         // todo add middleware with auth! (basic auth or create own)
         // todo whatabout params for "where" statements... (config)
         // todo make "single file" with .env config (index.php, .env, .htaccess and corresponding csv file)
-        // todo return proper status codes: https://pavledjuric.medium.com/best-practices-for-designing-rest-apis-using-proper-status-codes-461fde1cbb1c
-        // todo check if .env or settings array?!
         // todo root route
-        // todo exception handling see https://pavledjuric.medium.com/best-practices-for-designing-rest-apis-using-proper-status-codes-461fde1cbb1c
+        // todo add custom routes
 
         $router = new Router();
-        $csvdb = $this->csvdb;
+        $repository = $this->repository;
 
         // home
-        $router->get('/', function () use ($csvdb) {
+        $router->get('/', function () {
             echo "<h1>csvapi</h1>";
         });
 
         // api
-        $router->mount('/' . $this->baseroute, function () use ($router, $csvdb) {
+        $router->mount('/' . $this->baseroute, function () use ($router, $repository) {
             $router->before("PUT|POST", "*", function () {
                 self::before();
             });
 
-            $router->before("PUT|POST", "/.*", function () {
+            $router->before("PUT|POST|DELETE", "/.*", function () {
                 self::before();
             });
 
             // READ
-            $router->get('/', function () use ($csvdb) {
-                $data = $csvdb->select()->get();
-                self::output($data);
+            $router->get('/', function () use ($repository) {
+                $repository->get();
             });
 
-            $router->get('/{index}', function ($index) use ($csvdb) {
-                $data = $csvdb->select()->where([$csvdb->index => $index])->get();
-                self::output($data);
+            $router->get('/{index}', function ($index) use ($repository) {
+                $repository->get($index);
             });
 
             // CREATE
-            $router->post('/', function () use ($csvdb) {
-                $create = $csvdb->insert($_POST);
-                self::output($create);
+            $router->post('/', function () use ($repository) {
+                $repository->post($_POST);
             });
 
             // UPDATE
-            $router->post('/{index}', function ($index) use ($csvdb) {
-                $update = $csvdb->update($_POST, [$csvdb->index => $index]);
-                self::output($update);
+            $router->post('/{index}', function ($index) use ($repository) {
+                $repository->post($_POST, $index);
             });
 
             // UPSERT
-            $router->put('/', function () use ($router, $csvdb) {
-                $_PUT = self::put();
-
-                $upsert = $csvdb->upsert($_PUT);
-                self::output($upsert);
+            $router->put('/', function () use ($router, $repository) {
+                $repository->post(self::put());
             });
 
-            $router->put('/{index}', function ($index) use ($csvdb) {
-                $_PUT = self::put();
-
-                $upsert = $csvdb->upsert($_PUT, [$csvdb->index => $index]);
-                self::output($upsert);
+            $router->put('/{index}', function ($index) use ($repository) {
+                $repository->post(self::put(), $index);
             });
 
             // DELETE
-            $router->delete('/{index}', function ($index) use ($csvdb) {
-                $delete = $csvdb->delete([$csvdb->index => $index]);
-                if ($delete) {
-                    Response::respond204();
-                }
-                else {
-                    Response::respond400("resource could not be deleted");
-                }
+            $router->delete('/{index}', function ($index) use ($repository) {
+                $repository->delete($index);
             });
         });
 
@@ -167,7 +148,7 @@ class CSVAPI
         }
 
         if (empty($data)) {
-            Response::respond400("empty body");
+            Repository::respond400("empty body");
             exit;
         }
     }
@@ -178,11 +159,5 @@ class CSVAPI
         $_PUT = array();
         parse_str(file_get_contents('php://input'), $_PUT);
         return $_PUT;
-    }
-
-    private static function output($data)
-    {
-        header('Content-Type: application/json');
-        echo json_encode($data);
     }
 }

@@ -12,16 +12,6 @@ abstract class Repository
 
     public abstract function delete(string $index): void;
 
-    // PUT
-
-    public static function get_put(): array
-    {
-        // Fake $_PUT
-        $_PUT = array();
-        parse_str(file_get_contents('php://input'), $_PUT);
-        return $_PUT;
-    }
-
     // Response
 
     public static function respond200(array $data): void
@@ -60,6 +50,12 @@ abstract class Repository
     public static function respond404(): void
     {
         http_response_code(404);
+    }
+
+    public static function respond500(string $message): void
+    {
+        http_response_code(500);
+        self::output(["error" => $message]);
     }
 
     private static function output(array $data)
