@@ -10,9 +10,8 @@ use League\Csv\Exception;
 use League\Csv\InvalidArgument;
 use League\Csv\UnableToProcessCsv;
 
-class DefaultRepository extends Repository
+class DefaultRepository extends Repository implements QueryBuilder
 {
-
     private CSVDB $csvdb;
 
     public function __construct(string $csv_file, CSVConfig $csv_config)
@@ -22,15 +21,24 @@ class DefaultRepository extends Repository
         } catch (\Exception $e) {
             self::respond500($e);
         }
+        $this->query_builder = $this;
     }
 
     public function get(?string $index = null): void
     {
-        if (empty($index)) {
-            self::respond200($this->csvdb->select()->get());
-        } else {
-            self::respond200($this->csvdb->select()->where([$this->csvdb->index => $index])->get());
+        $params = self::get_parameter();
+        $query = $this->csvdb->select();
+        $where = [];
+        if (!empty($index)) {
+            $where = [$this->csvdb->index => $index];
+        } else if (!empty($params)) {
+            $where = $this->param_query();
         }
+
+        if (!empty($where)) {
+            $query = $query->where($where);
+        }
+        self::respond200($query->get());
     }
 
     public function post(array $data, ?string $index = null): void
@@ -87,5 +95,19 @@ class DefaultRepository extends Repository
         } catch (InvalidArgument|Exception $e) {
             self::respond500($e);
         }
+    }
+
+    // Default QueryBuilder
+
+    public function query(array $params): array
+    {
+        $where = [];
+        foreach ($params as $key => $value) {
+            $where[] = [$key => $value];
+        }
+        if (count($where) == 1) {
+            $where = $where[0];
+        }
+        return $where;
     }
 }

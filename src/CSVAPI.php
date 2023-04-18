@@ -3,8 +3,10 @@
 namespace CSVAPI;
 
 use Bramus\Router\Router;
+use CSVAPI\Auth\AuthMiddleware;
 use CSVAPI\Middleware\Middleware;
 use CSVAPI\Repository\DefaultRepository;
+use CSVAPI\Repository\QueryBuilder;
 use CSVAPI\Repository\Repository;
 use CSVDB\Helpers\CSVConfig;
 use Dotenv\Dotenv;
@@ -19,6 +21,7 @@ class CSVAPI
     public string $basedir;
     public string $baseroute;
 
+    private array $auth = array();
     private array $middleware = array();
 
     /**
@@ -28,7 +31,6 @@ class CSVAPI
      */
     public function __construct(string $csv_file, string $basedir, Repository $repository = null)
     {
-        // load env
         $dotenv = Dotenv::createImmutable($basedir);
         $dotenv->load();
 
@@ -80,6 +82,22 @@ class CSVAPI
         return CSVConfig::default();
     }
 
+    // Repository
+
+    public function query_builder(QueryBuilder $query_builder): void
+    {
+        $this->repository->query_builder($query_builder);
+    }
+
+    // MIDDLEWARE
+
+    public function auth(AuthMiddleware ...$middlewares): void
+    {
+        foreach ($middlewares as $middleware) {
+            $this->auth[get_class($middleware)] = $middleware;
+        }
+    }
+
     public function middleware(Middleware ...$middlewares): void
     {
         foreach ($middlewares as $middleware) {
@@ -87,11 +105,10 @@ class CSVAPI
         }
     }
 
-    public function run()
+    // RUN
+
+    public function run(): void
     {
-        // todo add middleware with auth! (basic auth or create own)
-        // todo whatabout params for "where" statements... (config)
-        // todo make "single file" with .env config (index.php, .env, .htaccess and corresponding csv file)
         // todo root route
         // todo add custom routes
 
@@ -105,6 +122,13 @@ class CSVAPI
 
         // api
         $router->mount('/' . $this->baseroute, function () use ($router, $repository) {
+
+            // auth middleware
+            foreach ($this->auth as $auth) {
+                if ($auth instanceof AuthMiddleware) {
+                    $auth->middleware_function();
+                }
+            }
 
             // custom before app middleware
             foreach ($this->middleware as $middleware) {
